@@ -326,7 +326,6 @@ const updateEmployeeRole = () => {
                     }
                 ]).then(roleChoice => {
                     params.roleId = roleChoice.role
-                    console.log(params)
                     db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
                         [params.roleId, params.empId], (err, rows) => {
                             if (err) { console.log(err.message) }
@@ -344,14 +343,42 @@ const updateEmployeeRole = () => {
 
 
 const viewTotalUtilizedDeptBudget = () => {
-    console.log("Not yet supported")
-    const sql = `
-            SELECT department.name, SUM(role.salary)
-            FROM employee
-            LEFT JOIN role ON employee.role_id = role.id
-            LEFT JOIN department ON role.department_id = department.id
-            WHERE department.name = 'Accounting'`
-    promptMainMenu()
+    //we need to get all the department names from the database, then ask the user to pick from them
+    //inquirer will display an array of objects with "name" properties and return the "value" property
+    const deptChoicesSql = `SELECT name, id as value FROM department`
+    db.query(deptChoicesSql, (err, deptChoices) => {
+        if (err) { throw (err.message) }
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'deptId',
+                message: 'Which department would you like to see?',
+                choices: deptChoices
+            }
+        ]).then(params => {
+            //run the report
+            const sql = `
+                        SELECT department.name AS 'Department Name', SUM(role.salary) AS 'Utilized Budget'
+                        FROM employee
+                        LEFT JOIN role ON employee.role_id = role.id
+                        LEFT JOIN department ON role.department_id = department.id
+                        WHERE department.id = ?`
+            db.query(sql, params.deptId, (err, rows) => {
+                if (err) { throw (err.message) }
+                console.log(`====================================================================================`)
+                console.log(`                      Viewing Total Utilized Department Budget`)
+                console.log(`====================================================================================`)
+                console.log(``)
+                if (rows[0]['Utilized Budget'] == null) {
+                    console.log(`No employees in this department!\n`)
+                } else {
+                console.log(`${cTable.getTable(rows)}`)
+                }
+                console.log(`====================================================================================`)
+                promptMainMenu()
+            })
+        })
+    })
 }
 
 
