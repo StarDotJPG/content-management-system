@@ -81,7 +81,7 @@ const promptMainMenu = () => {
         })
 }
 
-const viewAllDepartments = () => {                
+const viewAllDepartments = () => {
     db.query(`SELECT name AS 'Dept Name', id AS 'Dept ID' FROM department`, (err, rows) => {
         if (err) { console.log(err.message) }
         console.log((`====================================================================================`))
