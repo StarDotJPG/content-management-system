@@ -197,14 +197,10 @@ const addRole = () => {
         params.title = responses.title
         params.salary = responses.salary
         //we need to get all the department names from the database, then ask the user to pick from them
-        const deptChoicesSql = `SELECT name FROM department`
-        db.query(deptChoicesSql, (err, rows) => {
+        //inquirer will display an array of objects with "name" properties and return the "value" property
+        const deptChoicesSql = `SELECT name, id as value FROM department`
+        db.query(deptChoicesSql, (err, deptChoices) => {
             if (err) { throw (err.message) }
-            // query returns an array of objects, but inquirer expects an array, so mapping the objects into a new array
-            let deptChoices = rows.map(function (el) {
-                return `${el.name}`
-            })
-            // ask which department this role is in
             inquirer.prompt([
                 {
                     type: 'list',
@@ -213,33 +209,22 @@ const addRole = () => {
                     choices: deptChoices
                 }
             ]).then(responses => {
-                // now we need to get the department ID from department name
-                const getDeptIdSql = `
-                            SELECT id 
-                            FROM department
-                            WHERE name = '${responses.dept}'`
-                db.query(getDeptIdSql, (err, rows) => {
-                    if (err) { throw (err.message) }
-                    let deptId = rows.map(function (el) {
-                        return `${el.id}`
-                    })
-                    // department.name has a unique constraint, so there should only ever be one result
-                    params.dept = deptId[0]
-                    // finally, insert the new role into the database
-                    const sql = `
+                params.dept = responses.dept
+                // finally, insert the new role into the database
+                const sql = `
                     INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`
-                    db.query(sql, [params.title, params.salary, params.dept], (err, rows) => {
-                        if (err) { throw (err.message) }
-                        console.log((`====================================================================================`))
-                        console.log(`                      Role successfully added to database.`)
-                        console.log((`====================================================================================`))
-                        promptMainMenu()
-                    })
+                db.query(sql, [params.title, params.salary, params.dept], (err, rows) => {
+                    if (err) { throw (err.message) }
+                    console.log((`====================================================================================`))
+                    console.log(`                      Role successfully added to database.`)
+                    console.log((`====================================================================================`))
+                    promptMainMenu()
                 })
             })
         })
     })
 }
+
 
 const addEmployee = () => {
     // create a params object to hold the responses to our questions through multiple inquirer prompts
@@ -277,20 +262,20 @@ const addEmployee = () => {
         params.lastname = responses.lastname
         //we need to get all the roles from the database, then ask the user to pick from them
         //inquirer will display an array of objects with "name" properties and return the "value" property
-        const getRolesSql = `SELECT id as value, title as name FROM role`
-        db.query(getRolesSql, (err, roleChoices) => {
+        db.query(`SELECT id as value, title as name FROM role`, (err, roleChoices) => {
             if (err) { console.log(err.message) }
-            inquirer.prompt([{
-                type: 'list',
-                name: 'role',
-                message: 'What is the new employee\'s role?',
-                choices: roleChoices
-            }]).then(roleChoice => {
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'role',
+                    message: 'What is the new employee\'s role?',
+                    choices: roleChoices
+                }
+            ]).then(roleChoice => {
                 params.role = roleChoice.role
-                // now we need to get the manager for the new employee
+                //now we need to get the manager for the new employee
                 //inquirer will display an array of objects with "name" properties and return the "value" property
-                const getMgrSql = `SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`
-                db.query(getMgrSql, (err, mgrChoices) => {
+                db.query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`, (err, mgrChoices) => {
                     if (err) { console.log(err.message) }
                     inquirer.prompt([
                         {
@@ -301,13 +286,15 @@ const addEmployee = () => {
                         }
                     ]).then(managerChoice => {
                         params.manager = managerChoice.manager
-                        console.log(params)
-                        const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`
-                        db.query(sql, [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
-                            if (err) { console.log(err.message) }
-                            console.log("\nEmployee added to database.")
-                            promptMainMenu()
-                        })
+                        db.query(
+                            `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`,
+                            [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
+                                if (err) { console.log(err.message) }
+                                console.log((`====================================================================================`))
+                                console.log(`                      Employee successfully added to database.`)
+                                console.log((`====================================================================================`))
+                                promptMainMenu()
+                            })
                     })
                 })
             })
