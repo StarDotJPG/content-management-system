@@ -161,10 +161,8 @@ const addDepartment = () => {
 }
 
 async function addRole() {
-    // create a params object to hold the responses to our questions through multiple inquirer prompts
-    let params = {}
     // ask the first two questions and save the responses to params
-    params = await inquirer.prompt([
+    let params = await inquirer.prompt([
         {
             type: 'input',
             name: 'title',
@@ -192,20 +190,19 @@ async function addRole() {
             }
         }
     ])
-
-    //we need to get all the department names from the database, then ask the user to pick from them
-    //inquirer will display an array of objects with "name" property and return the "value" property
+    // get all the department names from the database, then ask the user to pick from them
+    // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
     let deptChoices = await db.promise().query(`SELECT name, id as value FROM department`)
-    //promise().query() returns an array of 2 objects. The first object contains the results of the query, so use [0]
+    //promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
     params = {...params, ...await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'dept',
-            message: 'What is the new role department?',
-            choices: deptChoices[0]
-        }
-    ])}
-
+            {
+                type: 'list',
+                name: 'dept',
+                message: 'What is the new role department?',
+                choices: deptChoices[0]
+            }
+        ])
+    }
     // finally, insert the new role into the database
     db.query(`INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`,
         [params.title, params.salary, params.dept], (err, rows) => {
@@ -217,11 +214,9 @@ async function addRole() {
         })
 }
 
-const addEmployee = () => {
-    // create a params object to hold the responses to our questions through multiple inquirer prompts
-    params = {}
+async function addEmployee() {
     // ask the first two questions and save the responses to params
-    inquirer.prompt([
+    let params = await inquirer.prompt([
         {
             type: 'input',
             name: 'firstname',
@@ -248,49 +243,43 @@ const addEmployee = () => {
                 }
             }
         }
-    ]).then(responses => {
-        params.firstname = responses.firstname
-        params.lastname = responses.lastname
-        //we need to get all the roles from the database, then ask the user to pick from them
-        //inquirer will display an array of objects with "name" properties and return the "value" property
-        db.query(`SELECT id as value, title as name FROM role`, (err, roleChoices) => {
+    ])
+    // get all the roles from the database, then ask the user to pick from them
+    // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
+    let roleChoices = await db.promise().query(`SELECT id as value, title as name FROM role`)
+    // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
+    params = {...params, ... await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'role',
+                message: 'What is the new employee\'s role?',
+                choices: roleChoices[0]
+            }
+        ])
+    }
+    // now we need to get the manager for the new employee
+    // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
+    let mgrChoices = await db.promise().query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`)
+    // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
+    params = {...params, ... await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'manager',
+                message: "Who is the employee's manager?",
+                choices: mgrChoices[0]
+            }
+        ])
+    }
+    // finally, insert new employee into database
+    db.query(
+        `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`,
+        [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
             if (err) { console.log(err.message) }
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    name: 'role',
-                    message: 'What is the new employee\'s role?',
-                    choices: roleChoices
-                }
-            ]).then(roleChoice => {
-                params.role = roleChoice.role
-                //now we need to get the manager for the new employee
-                //inquirer will display an array of objects with "name" properties and return the "value" property
-                db.query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`, (err, mgrChoices) => {
-                    if (err) { console.log(err.message) }
-                    inquirer.prompt([
-                        {
-                            type: 'list',
-                            name: 'manager',
-                            message: "Who is the employee's manager?",
-                            choices: mgrChoices
-                        }
-                    ]).then(managerChoice => {
-                        params.manager = managerChoice.manager
-                        db.query(
-                            `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`,
-                            [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
-                                if (err) { console.log(err.message) }
-                                console.log(`====================================================================================`)
-                                console.log(`                      Employee successfully added to database.`)
-                                console.log(`====================================================================================`)
-                                promptMainMenu()
-                            })
-                    })
-                })
-            })
+            console.log(`====================================================================================`)
+            console.log(`                      Employee successfully added to database.`)
+            console.log(`====================================================================================`)
+            promptMainMenu()
         })
-    })
 }
 
 const updateEmployeeRole = () => {
