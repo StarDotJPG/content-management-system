@@ -242,17 +242,20 @@ const addRole = () => {
 }
 
 const addEmployee = () => {
+    // create a params object to hold the responses to our questions through multiple inquirer prompts
+    params = {}
+    // ask the first two questions and save the responses to params
     inquirer.prompt([
         {
             type: 'input',
             name: 'firstname',
             message: 'What is the new employee\'s first name?',
             validate: firstname => {
-                if (firstname) {
-                    return true;
+                if (!firstname || firstname.length > 30) {
+                    console.log(`\nFirst name is required and must be less than 30 characters.`)
+                    return false
                 } else {
-                    console.log('Please enter a first name!');
-                    return false;
+                    return true
                 }
             }
         },
@@ -261,52 +264,55 @@ const addEmployee = () => {
             name: 'lastname',
             message: 'What is the new employee\'s last name?',
             validate: lastname => {
-                if (lastname) {
-                    return true;
+                if (!lastname || lastname.length > 30) {
+                    console.log(`\nLast name is required and must be less than 30 characters.`)
+                    return false
                 } else {
-                    console.log('Please enter a last name!');
-                    return false;
+                    return true
                 }
             }
         }
-    ]).then(response => {
-        const params = [response.firstname, response.lastname]
-        const getRolesSql = `SELECT id, title FROM role`
-        db.query(getRolesSql, (err, rows) => {
+    ]).then(responses => {
+        params.firstname = responses.firstname
+        params.lastname = responses.lastname
+        //we need to get all the roles from the database, then ask the user to pick from them
+        //inquirer will display an array of objects with "name" properties and return the "value" property
+        const getRolesSql = `SELECT id as value, title as name FROM role`
+        db.query(getRolesSql, (err, roleChoices) => {
             if (err) { console.log(err.message) }
-            const roles = data.map(({ id, title }) => ({ name: title, value: id }))
             inquirer.prompt([{
                 type: 'list',
                 name: 'role',
                 message: 'What is the new employee\'s role?',
-                choices: roles
+                choices: roleChoices
             }]).then(roleChoice => {
-                params.push(roleChoice)
-                const getMgrSql = `SELECT * FROM employee`
-                db.query(getMgrSql, (err, rows) => {
+                params.role = roleChoice.role
+                // now we need to get the manager for the new employee
+                //inquirer will display an array of objects with "name" properties and return the "value" property
+                const getMgrSql = `SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`
+                db.query(getMgrSql, (err, mgrChoices) => {
                     if (err) { console.log(err.message) }
-                    const managers = data.map(({ id, first_name, last_name }) => ({ name: first_name + " " + last_name, value: id }));
                     inquirer.prompt([
                         {
                             type: 'list',
                             name: 'manager',
                             message: "Who is the employee's manager?",
-                            choices: managers
+                            choices: mgrChoices
                         }
                     ]).then(managerChoice => {
-                        const manager = managerChoice.manager
-                        params.push(manager)
+                        params.manager = managerChoice.manager
+                        console.log(params)
                         const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`
-                        db.query(sql, params, (err, rows) => {
+                        db.query(sql, [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
                             if (err) { console.log(err.message) }
                             console.log("\nEmployee added to database.")
+                            promptMainMenu()
                         })
                     })
                 })
             })
         })
     })
-    promptMainMenu()
 }
 
 const updateEmployeeRole = () => {
