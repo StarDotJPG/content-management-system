@@ -7,11 +7,11 @@ const cTable = require('console.table');
 db.connect(err => {
     if (err) throw err;
     console.clear();
-    console.log((`====================================================================================`));
+    console.log(`====================================================================================`);
     console.log(``);
-    console.log('                            Welcome to the Employee CMS');
+    console.log(`                            Welcome to the Employee CMS`);
     console.log(``);
-    console.log((`====================================================================================`));
+    console.log(`====================================================================================`);
     promptMainMenu();
 });
 
@@ -85,11 +85,12 @@ const promptMainMenu = () => {
 const viewAllDepartments = () => {
     db.query(`SELECT name AS 'Dept Name', id AS 'Dept ID' FROM department`, (err, rows) => {
         if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
         console.log(`                          Viewing All Departments`)
-        console.log((`====================================================================================`))
-        console.log("\n" + cTable.getTable(rows))
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
+        console.log(``)
+        console.log(`${cTable.getTable(rows)}`)
+        console.log(`====================================================================================`)
         promptMainMenu()
     })
 }
@@ -101,32 +102,34 @@ const viewAllRoles = () => {
                 ORDER BY title`
     db.query(sql, (err, rows) => {
         if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
         console.log(`                            Viewing All Roles`)
-        console.log((`====================================================================================`))
-        console.log("\n" + cTable.getTable(rows))
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
+        console.log(``)
+        console.log(`${cTable.getTable(rows)}`)
+        console.log(`====================================================================================`)
         promptMainMenu()
     })
 }
 
 const viewAllEmployees = () => {
-    const sql = `SELECT 
-                        employee.id as 'Employee ID', 
-                        employee.first_name AS 'First Name', 
-                        employee.last_name AS 'Last Name', 
-                        role.title AS 'Job Title', 
-                        role.salary AS 'Salary', 
-                        employee.manager_id AS 'Manager Employee ID' 
+    const sql = `SELECT
+                employee.id AS 'Employee ID', 
+                    CONCAT (employee.first_name, " ", employee.last_name) AS 'Employee Name',
+                    role.title AS 'Job Title', 
+                    role.salary AS 'Salary', 
+                    CONCAT (manager.first_name, " ", manager.last_name) AS 'Manager Name'
                 FROM employee
+                LEFT JOIN employee manager ON employee.manager_id = manager.id
                 LEFT JOIN role ON employee.role_id = role.id`
     db.query(sql, (err, rows) => {
         if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
         console.log(`                            Viewing All Employees`)
-        console.log((`====================================================================================`))
-        console.log("\n" + cTable.getTable(rows))
-        console.log((`====================================================================================`))
+        console.log(`====================================================================================`)
+        console.log(``)
+        console.log(`${cTable.getTable(rows)}`)
+        console.log(`====================================================================================`)
         promptMainMenu()
     })
 }
@@ -149,19 +152,19 @@ const addDepartment = () => {
     ]).then(params => {
         db.query(`INSERT INTO department (name) VALUES (?)`, params.deptName, (err, rows) => {
             if (err) { throw (err.message) }
-            console.log((`====================================================================================`))
+            console.log(`====================================================================================`)
             console.log(`                   Department successfully added to database.`)
-            console.log((`====================================================================================`))
+            console.log(`====================================================================================`)
             promptMainMenu()
         })
     })
 }
 
-const addRole = () => {
+async function addRole() {
     // create a params object to hold the responses to our questions through multiple inquirer prompts
-    params = {}
+    let params = {}
     // ask the first two questions and save the responses to params
-    inquirer.prompt([
+    params = await inquirer.prompt([
         {
             type: 'input',
             name: 'title',
@@ -188,38 +191,31 @@ const addRole = () => {
                 }
             }
         }
-    ]).then(responses => {
-        params.title = responses.title
-        params.salary = responses.salary
-        //we need to get all the department names from the database, then ask the user to pick from them
-        //inquirer will display an array of objects with "name" properties and return the "value" property
-        const deptChoicesSql = `SELECT name, id as value FROM department`
-        db.query(deptChoicesSql, (err, deptChoices) => {
-            if (err) { throw (err.message) }
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    name: 'dept',
-                    message: 'What is the new role department?',
-                    choices: deptChoices
-                }
-            ]).then(responses => {
-                params.dept = responses.dept
-                // finally, insert the new role into the database
-                const sql = `
-                    INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`
-                db.query(sql, [params.title, params.salary, params.dept], (err, rows) => {
-                    if (err) { throw (err.message) }
-                    console.log((`====================================================================================`))
-                    console.log(`                      Role successfully added to database.`)
-                    console.log((`====================================================================================`))
-                    promptMainMenu()
-                })
-            })
-        })
-    })
-}
+    ])
 
+    //we need to get all the department names from the database, then ask the user to pick from them
+    //inquirer will display an array of objects with "name" property and return the "value" property
+    let deptChoices = await db.promise().query(`SELECT name, id as value FROM department`)
+    //promise().query() returns an array of 2 objects. The first object contains the results of the query, so use [0]
+    params = {...params, ...await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'dept',
+            message: 'What is the new role department?',
+            choices: deptChoices[0]
+        }
+    ])}
+
+    // finally, insert the new role into the database
+    db.query(`INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`,
+        [params.title, params.salary, params.dept], (err, rows) => {
+            if (err) { throw (err.message) }
+            console.log(`====================================================================================`)
+            console.log(`                      Role successfully added to database.`)
+            console.log(`====================================================================================`)
+            promptMainMenu()
+        })
+}
 
 const addEmployee = () => {
     // create a params object to hold the responses to our questions through multiple inquirer prompts
@@ -285,9 +281,9 @@ const addEmployee = () => {
                             `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`,
                             [params.firstname, params.lastname, params.role, params.manager], (err, rows) => {
                                 if (err) { console.log(err.message) }
-                                console.log((`====================================================================================`))
+                                console.log(`====================================================================================`)
                                 console.log(`                      Employee successfully added to database.`)
-                                console.log((`====================================================================================`))
+                                console.log(`====================================================================================`)
                                 promptMainMenu()
                             })
                     })
@@ -329,9 +325,9 @@ const updateEmployeeRole = () => {
                     db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
                         [params.roleId, params.empId], (err, rows) => {
                             if (err) { console.log(err.message) }
-                            console.log((`====================================================================================`))
+                            console.log(`====================================================================================`)
                             console.log(`                      Employee successfully updated.`)
-                            console.log((`====================================================================================`))
+                            console.log(`====================================================================================`)
                             promptMainMenu()
                         })
                 })
@@ -339,8 +335,6 @@ const updateEmployeeRole = () => {
         })
     })
 }
-
-
 
 const viewTotalUtilizedDeptBudget = () => {
     //we need to get all the department names from the database, then ask the user to pick from them
@@ -370,9 +364,10 @@ const viewTotalUtilizedDeptBudget = () => {
                 console.log(`====================================================================================`)
                 console.log(``)
                 if (rows[0]['Utilized Budget'] == null) {
-                    console.log(`No employees in this department!\n`)
+                    console.log(`No employees in this department!`)
+                    console.log(``)
                 } else {
-                console.log(`${cTable.getTable(rows)}`)
+                    console.log(`${cTable.getTable(rows)}`)
                 }
                 console.log(`====================================================================================`)
                 promptMainMenu()
