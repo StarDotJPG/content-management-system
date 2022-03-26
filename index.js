@@ -29,6 +29,7 @@ const promptMainMenu = () => {
                 'Add a department',
                 'Add an employee',
                 'Add a role',
+                'Update an employee role',
                 'View total utilized department budget',
                 'Clear the screen',
                 'Exit',
@@ -297,15 +298,50 @@ const addEmployee = () => {
 }
 
 const updateEmployeeRole = () => {
-    db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
-        [response.employeetoupdate, response.newemployeerole], (err, rows) => {
-            if (err) { console.log(err.message) }
-            console.log((`====================================================================================`))
-            console.log(`                      Employee successfully added to database.`)
-            console.log((`====================================================================================`))
-            promptMainMenu()
+    // create a params object to hold the responses to our questions through multiple inquirer prompts
+    params = {}
+    // get all the employees from the database to use as choices
+    db.query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`, (err, empChoices) => {
+        if (err) { console.log(err.message) }
+        // ask for the employee and save the responses to params
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'employee',
+                message: "Who is the employee to be updated?",
+                choices: empChoices
+            }
+        ]).then(responses => {
+            params.empId = responses.employee
+            //we need to get all the roles from the database, then ask the user to pick from them
+            //inquirer will display an array of objects with "name" properties and return the "value" property
+            db.query(`SELECT id as value, title as name FROM role`, (err, roleChoices) => {
+                if (err) { console.log(err.message) }
+                inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'role',
+                        message: 'What is the employee\'s new role?',
+                        choices: roleChoices
+                    }
+                ]).then(roleChoice => {
+                    params.roleId = roleChoice.role
+                    console.log(params)
+                    db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
+                        [params.roleId, params.empId], (err, rows) => {
+                            if (err) { console.log(err.message) }
+                            console.log((`====================================================================================`))
+                            console.log(`                      Employee successfully updated.`)
+                            console.log((`====================================================================================`))
+                            promptMainMenu()
+                        })
+                })
+            })
         })
+    })
 }
+
+
 
 const viewTotalUtilizedDeptBudget = () => {
     console.log("Not yet supported")
