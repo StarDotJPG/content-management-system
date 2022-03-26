@@ -194,7 +194,8 @@ async function addRole() {
     // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
     let deptChoices = await db.promise().query(`SELECT name, id as value FROM department`)
     //promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
-    params = {...params, ...await inquirer.prompt([
+    params = {
+        ...params, ...await inquirer.prompt([
             {
                 type: 'list',
                 name: 'dept',
@@ -248,7 +249,8 @@ async function addEmployee() {
     // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
     let roleChoices = await db.promise().query(`SELECT id as value, title as name FROM role`)
     // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
-    params = {...params, ... await inquirer.prompt([
+    params = {
+        ...params, ... await inquirer.prompt([
             {
                 type: 'list',
                 name: 'role',
@@ -261,7 +263,8 @@ async function addEmployee() {
     // inquirer choices require an array of objects with "name" property and return the "value" property, so using aliases in the DB query
     let mgrChoices = await db.promise().query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`)
     // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
-    params = {...params, ... await inquirer.prompt([
+    params = {
+        ...params, ... await inquirer.prompt([
             {
                 type: 'list',
                 name: 'manager',
@@ -282,47 +285,40 @@ async function addEmployee() {
         })
 }
 
-const updateEmployeeRole = () => {
-    // create a params object to hold the responses to our questions through multiple inquirer prompts
-    params = {}
+async function updateEmployeeRole() {
     // get all the employees from the database to use as choices
-    db.query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`, (err, empChoices) => {
-        if (err) { console.log(err.message) }
-        // ask for the employee and save the responses to params
-        inquirer.prompt([
+    let empChoices = await db.promise().query(`SELECT CONCAT (first_name, " ", last_name) AS name, id as value FROM employee`)
+    // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
+    // ask for the employee and save the responses to params
+    let params = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'employee',
+            message: "Who is the employee to be updated?",
+            choices: empChoices[0]
+        }
+    ])
+    // get all the roles from the database, then ask the user to pick from them
+    // inquirer will display an array of objects with "name" properties and return the "value" property
+    let roleChoices = await db.promise().query(`SELECT id as value, title as name FROM role`)
+    params = {
+        ...params, ...await inquirer.prompt([
             {
                 type: 'list',
-                name: 'employee',
-                message: "Who is the employee to be updated?",
-                choices: empChoices
+                name: 'role',
+                message: 'What is the employee\'s new role?',
+                choices: roleChoices[0]
             }
-        ]).then(responses => {
-            params.empId = responses.employee
-            //we need to get all the roles from the database, then ask the user to pick from them
-            //inquirer will display an array of objects with "name" properties and return the "value" property
-            db.query(`SELECT id as value, title as name FROM role`, (err, roleChoices) => {
-                if (err) { console.log(err.message) }
-                inquirer.prompt([
-                    {
-                        type: 'list',
-                        name: 'role',
-                        message: 'What is the employee\'s new role?',
-                        choices: roleChoices
-                    }
-                ]).then(roleChoice => {
-                    params.roleId = roleChoice.role
-                    db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
-                        [params.roleId, params.empId], (err, rows) => {
-                            if (err) { console.log(err.message) }
-                            console.log(`====================================================================================`)
-                            console.log(`                      Employee successfully updated.`)
-                            console.log(`====================================================================================`)
-                            promptMainMenu()
-                        })
-                })
-            })
+        ])
+    }
+    db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
+        [params.role, params.employee], (err, rows) => {
+            if (err) { console.log(err.message) }
+            console.log(`====================================================================================`)
+            console.log(`                      Employee successfully updated.`)
+            console.log(`====================================================================================`)
+            promptMainMenu()
         })
-    })
 }
 
 const viewTotalUtilizedDeptBudget = () => {
