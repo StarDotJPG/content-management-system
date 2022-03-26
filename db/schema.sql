@@ -24,3 +24,4 @@ CREATE TABLE employee (
   manager_id INTEGER NULL,
   CONSTRAINT fk_manager FOREIGN KEY (manager_id) REFERENCES employee(id)
 );
+

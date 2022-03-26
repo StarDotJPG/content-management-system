@@ -81,10 +81,8 @@ const promptMainMenu = () => {
         })
 }
 
-const viewAllDepartments = () => {
-    const sql = `
-                SELECT name AS 'Dept Name', id AS 'Dept ID' FROM department`
-    db.query(sql, (err, rows) => {
+const viewAllDepartments = () => {                
+    db.query(`SELECT name AS 'Dept Name', id AS 'Dept ID' FROM department`, (err, rows) => {
         if (err) { console.log(err.message) }
         console.log((`====================================================================================`))
         console.log(`                          Viewing All Departments`)
@@ -96,8 +94,7 @@ const viewAllDepartments = () => {
 }
 
 const viewAllRoles = () => {
-    const sql = `
-                SELECT role.title AS 'Job Title', role.id AS 'Role ID', department.name AS 'Dept Name', role.salary AS Salary
+    const sql = `SELECT role.title AS 'Job Title', role.id AS 'Role ID', department.name AS 'Dept Name', role.salary AS Salary
                 FROM role
                 LEFT JOIN department ON role.department_id = department.id
                 ORDER BY title`
@@ -113,8 +110,7 @@ const viewAllRoles = () => {
 }
 
 const viewAllEmployees = () => {
-    const sql = `
-                SELECT 
+    const sql = `SELECT 
                         employee.id as 'Employee ID', 
                         employee.first_name AS 'First Name', 
                         employee.last_name AS 'Last Name', 
@@ -150,9 +146,7 @@ const addDepartment = () => {
             }
         }
     ]).then(params => {
-        const sql = `
-                    INSERT INTO department (name) VALUES (?)`
-        db.query(sql, params.deptName, (err, rows) => {
+        db.query(`INSERT INTO department (name) VALUES (?)`, params.deptName, (err, rows) => {
             if (err) { throw (err.message) }
             console.log((`====================================================================================`))
             console.log(`                   Department successfully added to database.`)
@@ -303,22 +297,24 @@ const addEmployee = () => {
 }
 
 const updateEmployeeRole = () => {
-    const sql = `
-                UPDATE employee SET role_id = ? WHERE id = ?`
-    params = [response.employeetoupdate, response.newemployeerole]
-
-    db.query(sql, params, (err, rows) => {
-        if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
-        console.log(`                      Employee successfully added to database.`)
-        console.log((`====================================================================================`))
-        promptMainMenu()
-    })
-
+    db.query(`UPDATE employee SET role_id = ? WHERE id = ?`,
+        [response.employeetoupdate, response.newemployeerole], (err, rows) => {
+            if (err) { console.log(err.message) }
+            console.log((`====================================================================================`))
+            console.log(`                      Employee successfully added to database.`)
+            console.log((`====================================================================================`))
+            promptMainMenu()
+        })
 }
 
 const viewTotalUtilizedDeptBudget = () => {
     console.log("Not yet supported")
+    const sql = `
+            SELECT department.name, SUM(role.salary)
+            FROM employee
+            LEFT JOIN role ON employee.role_id = role.id
+            LEFT JOIN department ON role.department_id = department.id
+            WHERE department.name = 'Accounting'`
     promptMainMenu()
 }
 
