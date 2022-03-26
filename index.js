@@ -163,19 +163,82 @@ const addDepartment = () => {
 }
 
 const addRole = () => {
-    const sql = `
-                INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`
-    params = [response.role, response.salary, response.department]
-    //TODO: Add input validation
-
-    db.query(sql, params, (err, rows) => {
-        if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
-        console.log(`                      Role successfully added to database.`)
-        console.log((`====================================================================================`))
-        promptMainMenu()
+    // create a params object to hold the responses to our questions through multiple inquirer prompts
+    params = {}
+    // ask the first two questions and save the responses to params
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'title',
+            message: 'What is the new role title?',
+            validate: deptName => {
+                if (!deptName || deptName.length > 30) {
+                    console.log(`\nRole title is required and must be less than 30 characters.`)
+                    return false
+                } else {
+                    return true
+                }
+            }
+        },
+        {
+            type: 'number',
+            name: 'salary',
+            message: 'What is the new role salary?',
+            validate: deptName => {
+                if (!deptName || deptName.length > 65) {
+                    console.log(`\nSalary is required and must be in decimal format and less than 65 characters.`)
+                    return false
+                } else {
+                    return true
+                }
+            }
+        }
+    ]).then(responses => {
+        params.title = responses.title
+        params.salary = responses.salary
+        //we need to get all the department names from the database, then ask the user to pick from them
+        const deptChoicesSql = `SELECT name FROM department`
+        db.query(deptChoicesSql, (err, rows) => {
+            if (err) { throw (err.message) }
+            // query returns an array of objects, but inquirer expects an array, so mapping the objects into a new array
+            let deptChoices = rows.map(function (el) {
+                return `${el.name}`
+            })
+            // ask which department this role is in
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'dept',
+                    message: 'What is the new role department?',
+                    choices: deptChoices
+                }
+            ]).then(responses => {
+                // now we need to get the department ID from department name
+                const getDeptIdSql = `
+                            SELECT id 
+                            FROM department
+                            WHERE name = '${responses.dept}'`
+                db.query(getDeptIdSql, (err, rows) => {
+                    if (err) { throw (err.message) }
+                    let deptId = rows.map(function (el) {
+                        return `${el.id}`
+                    })
+                    // department.name has a unique constraint, so there should only ever be one result
+                    params.dept = deptId[0]
+                    // finally, insert the new role into the database
+                    const sql = `
+                    INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`
+                    db.query(sql, [params.title, params.salary, params.dept], (err, rows) => {
+                        if (err) { throw (err.message) }
+                        console.log((`====================================================================================`))
+                        console.log(`                      Role successfully added to database.`)
+                        console.log((`====================================================================================`))
+                        promptMainMenu()
+                    })
+                })
+            })
+        })
     })
-
 }
 
 const addEmployee = () => {

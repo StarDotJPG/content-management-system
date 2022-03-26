@@ -35,7 +35,9 @@ VALUES
     ('QA Engineer', 80000, 7),
     ('Chief Technology Officer', 150000, 7);
 
---Managers must be loaded first
+/*
+Managers must be loaded first
+*/
 INSERT INTO employee (first_name, last_name, role_id, manager_id)
 VALUES 
     ('James', 'Fraser', 2, NULL),
