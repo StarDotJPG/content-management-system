@@ -114,7 +114,13 @@ const viewAllRoles = () => {
 
 const viewAllEmployees = () => {
     const sql = `
-                SELECT employee.id as 'Employee ID', employee.first_name AS 'First Name', employee.last_name AS 'Last Name', role.title AS 'Job Title', role.salary AS 'Salary', employee.manager_id AS 'Manager Employee ID' 
+                SELECT 
+                        employee.id as 'Employee ID', 
+                        employee.first_name AS 'First Name', 
+                        employee.last_name AS 'Last Name', 
+                        role.title AS 'Job Title', 
+                        role.salary AS 'Salary', 
+                        employee.manager_id AS 'Manager Employee ID' 
                 FROM employee
                 LEFT JOIN role ON employee.role_id = role.id`
     db.query(sql, (err, rows) => {
@@ -129,17 +135,31 @@ const viewAllEmployees = () => {
 }
 
 const addDepartment = () => {
-    const sql = `
-                INSERT INTO department (name) VALUES (?)`
-    params = "New Department"
-    //TODO: Get params
-    db.query(sql, params, (err, rows) => {
-        if (err) { console.log(err.message) }
-        console.log((`====================================================================================`))
-        console.log(`                   Department successfully added to database.`)
-        console.log((`====================================================================================`))
-        promptMainMenu()
-    })    
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'deptName',
+            message: 'What is the new department name?',
+            validate: deptName => {
+                if (!deptName || deptName.length > 30) {
+                    console.log(`\nDepartment name is required and must be less than 30 characters.`)
+                    return false
+                } else {
+                    return true
+                }
+            }
+        }
+    ]).then(params => {
+        const sql = `
+                    INSERT INTO department (name) VALUES (?)`
+        db.query(sql, params.deptName, (err, rows) => {
+            if (err) { throw (err.message) }
+            console.log((`====================================================================================`))
+            console.log(`                   Department successfully added to database.`)
+            console.log((`====================================================================================`))
+            promptMainMenu()
+        })
+    })
 }
 
 const addRole = () => {
@@ -155,7 +175,7 @@ const addRole = () => {
         console.log((`====================================================================================`))
         promptMainMenu()
     })
-    
+
 }
 
 const addEmployee = () => {
@@ -238,7 +258,7 @@ const updateEmployeeRole = () => {
         console.log((`====================================================================================`))
         promptMainMenu()
     })
-    
+
 }
 
 const viewTotalUtilizedDeptBudget = () => {
