@@ -321,43 +321,40 @@ async function updateEmployeeRole() {
         })
 }
 
-const viewTotalUtilizedDeptBudget = () => {
-    //we need to get all the department names from the database, then ask the user to pick from them
-    //inquirer will display an array of objects with "name" properties and return the "value" property
-    const deptChoicesSql = `SELECT name, id as value FROM department`
-    db.query(deptChoicesSql, (err, deptChoices) => {
+async function viewTotalUtilizedDeptBudget() {
+    // get all the department names from the database, then ask the user to pick from them
+    // inquirer will display an array of objects with "name" properties and return the "value" property
+    let deptChoices = await db.promise().query(`SELECT name, id as value FROM department`)
+    // promise().query() returns an array of 2 objects. The first object contains the results of the query, so using [0]
+    let params = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'deptId',
+            message: 'Which department would you like to see?',
+            choices: deptChoices[0]
+        }
+    ])
+    // run the report
+    const sql = `
+                SELECT department.name AS 'Department Name', SUM(role.salary) AS 'Utilized Budget'
+                FROM employee
+                LEFT JOIN role ON employee.role_id = role.id
+                LEFT JOIN department ON role.department_id = department.id
+                WHERE department.id = ?`
+    db.query(sql, params.deptId, (err, rows) => {
         if (err) { throw (err.message) }
-        inquirer.prompt([
-            {
-                type: 'list',
-                name: 'deptId',
-                message: 'Which department would you like to see?',
-                choices: deptChoices
-            }
-        ]).then(params => {
-            //run the report
-            const sql = `
-                        SELECT department.name AS 'Department Name', SUM(role.salary) AS 'Utilized Budget'
-                        FROM employee
-                        LEFT JOIN role ON employee.role_id = role.id
-                        LEFT JOIN department ON role.department_id = department.id
-                        WHERE department.id = ?`
-            db.query(sql, params.deptId, (err, rows) => {
-                if (err) { throw (err.message) }
-                console.log(`====================================================================================`)
-                console.log(`                      Viewing Total Utilized Department Budget`)
-                console.log(`====================================================================================`)
-                console.log(``)
-                if (rows[0]['Utilized Budget'] == null) {
-                    console.log(`No employees in this department!`)
-                    console.log(``)
-                } else {
-                    console.log(`${cTable.getTable(rows)}`)
-                }
-                console.log(`====================================================================================`)
-                promptMainMenu()
-            })
-        })
+        console.log(`====================================================================================`)
+        console.log(`                      Viewing Total Utilized Department Budget`)
+        console.log(`====================================================================================`)
+        console.log(``)
+        if (rows[0]['Utilized Budget'] == null) {
+            console.log(`No employees in this department!`)
+            console.log(``)
+        } else {
+            console.log(`${cTable.getTable(rows)}`)
+        }
+        console.log(`====================================================================================`)
+        promptMainMenu()
     })
 }
 
