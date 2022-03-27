@@ -17,6 +17,7 @@ Design considerations included:
 * Using syntactic sugar syntax (such as async/await instead of promise chaining) to improve reaability
 * Using DRY (Dont Repeat Yourself) software pattern to improve maintainability and readability
 * Using separation of concerns
+* Database design:
 ![Database design](database_design.png)
 
 ## Contribution
