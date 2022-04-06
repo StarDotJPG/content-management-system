@@ -1,4 +1,4 @@
-# Employee Tracker Content Management System
+# Employee Tracker 
 
 ## Description
 This is a command line application which tracks employees at a company.
